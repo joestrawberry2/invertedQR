@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>invertedQR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f4f0; --surface: #fff; --border: rgba(0,0,0,0.12);
+      --border-h: rgba(0,0,0,0.25); --tp: #1a1a18; --ts: #6b6b67;
+      --tt: #a8a8a4; --accent: #1a1a18; --r: 8px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1a1a18; --surface: #242422; --border: rgba(255,255,255,0.1);
+        --border-h: rgba(255,255,255,0.22); --tp: #f0efe9; --ts: #9a9a96;
+        --tt: #5a5a57; --accent: #f0efe9; }
+    }
+    body { background: var(--bg); color: var(--tp); font-family: 'DM Sans', sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+    .wrap { width: 100%; max-width: 400px; }
+    h1 { font-family: 'Space Mono', monospace; font-size: 28px; font-weight: 700;
+      letter-spacing: -1px; color: var(--tp); margin-bottom: 4px; }
+    p.sub { font-size: 13px; color: var(--ts); margin-bottom: 1.5rem; }
+    .row { display: flex; gap: 8px; margin-bottom: 1rem; }
+    input[type=text] { flex: 1; height: 36px; padding: 0 10px; font-size: 14px;
+      font-family: 'DM Sans', sans-serif; color: var(--tp); background: var(--surface);
+      border: 0.5px solid var(--border); border-radius: var(--r); outline: none; }
+    input[type=text]:focus { border-color: var(--border-h); }
+    input[type=text]::placeholder { color: var(--tt); }
+    button.gen { height: 36px; padding: 0 14px; font-family: 'Space Mono', monospace;
+      font-size: 11px; font-weight: 700; color: var(--bg); background: var(--accent);
+      border: none; border-radius: var(--r); cursor: pointer; white-space: nowrap; }
+    button.gen:hover { opacity: 0.8; }
+    #qr-out { display: none; margin: 0 auto; }
+    #qr-out canvas, #qr-out img { display: block; image-rendering: pixelated; border-radius: 3px; outline: 24px solid #111110; }
+    .foot { display: flex; justify-content: space-between; align-items: center;
+      margin-top: 10px; min-height: 26px; }
+    .hint { font-size: 11px; font-family: 'Space Mono', monospace; color: var(--tt); }
+    button.dl { display: none; font-family: 'Space Mono', monospace; font-size: 11px;
+      color: var(--ts); background: transparent; border: 0.5px solid var(--border);
+      border-radius: var(--r); padding: 3px 10px; cursor: pointer; }
+    button.dl:hover { color: var(--tp); border-color: var(--border-h); }
+    .placeholder { font-size: 13px; color: var(--tt); text-align: center; padding: 2rem 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>invertedQR</h1>
+  <p class="sub">inverted QR codes.</p>
+
+  <div class="row">
+    <input type="text" id="txt" placeholder="URL or text…" autocomplete="off" spellcheck="false" />
+    <button class="gen" id="genbtn">Generate</button>
+  </div>
+
+  <p class="placeholder" id="ph">enter text above and hit Generate</p>
+  <div id="qr-out"></div>
+
+  <div class="foot">
+    <span class="hint" id="hint"></span>
+    <button class="dl" id="dlbtn">download PNG</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const txtEl  = document.getElementById('txt');
+  const genBtn = document.getElementById('genbtn');
+  const out    = document.getElementById('qr-out');
+  const ph     = document.getElementById('ph');
+  const hint   = document.getElementById('hint');
+  const dlBtn  = document.getElementById('dlbtn');
+  let currentText = '';
+
+  genBtn.addEventListener('click', () => { currentText = txtEl.value.trim(); if (currentText) gen(); });
+  txtEl.addEventListener('keydown', e => { if (e.key === 'Enter') { currentText = txtEl.value.trim(); if (currentText) gen(); } });
+
+  function gen() {
+    out.innerHTML = '';
+    const BORDER = 24;
+    new QRCode(out, {
+      text: currentText,
+      width: 96,
+      height: 96,
+      colorDark: '#f5f4ee',
+      colorLight: '#111110',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    setTimeout(() => {
+      const src = out.querySelector("canvas");
+      if (src) {
+        const b = BORDER;
+        const nc = document.createElement("canvas");
+        nc.width = src.width + b * 2;
+        nc.height = src.height + b * 2;
+        const ctx = nc.getContext("2d");
+        ctx.fillStyle = "#111110";
+        ctx.fillRect(0, 0, nc.width, nc.height);
+        ctx.drawImage(src, b, b);
+        src.replaceWith(nc);
+      }
+      ph.style.display = 'none';
+      out.style.display = 'block';
+      dlBtn.style.display = 'inline-block';
+      hint.textContent = currentText.length + ' char' + (currentText.length !== 1 ? 's' : '');
+    }, 50);
+  }
+
+  dlBtn.addEventListener('click', () => {
+    const c = out.querySelector('canvas');
+    if (!c) return;
+    const link = document.createElement('a');
+    link.download = 'invertedqr.png';
+    link.href = c.toDataURL('image/png');
+    link.click();
+  });
+})();
+</script>
+</body>
+</html>
